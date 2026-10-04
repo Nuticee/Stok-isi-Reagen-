@@ -1,0 +1,9 @@
+{
+  "name": "Stok Reagen",
+  "short_name": "Stok Reagen",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f7",
+  "theme_color": "#111827",
+  "orientation": "portrait"
+}
