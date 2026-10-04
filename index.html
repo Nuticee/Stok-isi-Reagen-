@@ -263,15 +263,36 @@ async function editUse(id){
     await loadRemote();
   }catch(e){console.error(e);alert("Gagal mengubah data pemakaian: "+e.message)}
 }
-async function delRecord(kind,id){if(!confirm("Hapus data ini?"))return;try{if(kind==="o"){const hasUse=db.u.some(x=>x.oid==id);if(hasUse){alert("Pembukaan ini masih memiliki data pemakaian. Hapus data pemakaian terlebih dahulu.");return}const r=await supabaseClient.from("pembukaan_reagen").delete().eq("id",id);if(r.error)throw r.error}else{const r=await supabaseClient.from("pemakaian_reagen").delete().eq("id",id);if(r.error)throw r.error}await loadRemote()}catch(e){alert("Gagal menghapus data: "+e.message)}}
-function jsArg(v){return JSON.stringify(String(v));}
+window.editOpen=editOpen; window.editUse=editUse; window.delRecord=delRecord;
+async function delRecord(kind,id){
+  const password=prompt("Masukkan password untuk menghapus data:");
+  if(password===null)return;
+  if(password!=="hapus123"){alert("Password salah. Data tidak dihapus.");return;}
+  if(!confirm("Password benar. Yakin ingin menghapus data ini?"))return;
+  try{
+    if(kind==="o"){
+      const hasUse=db.u.some(x=>x.oid==id);
+      if(hasUse){alert("Pembukaan ini masih memiliki data pemakaian. Hapus data pemakaian terlebih dahulu.");return}
+      const r=await supabaseClient.from("pembukaan_reagen").delete().eq("id",id);
+      if(r.error)throw r.error;
+    }else{
+      const r=await supabaseClient.from("pemakaian_reagen").delete().eq("id",id);
+      if(r.error)throw r.error;
+    }
+    alert("Data berhasil dihapus.");
+    await loadRemote();
+  }catch(e){alert("Gagal menghapus data: "+e.message)}
+}
+function jsArg(v){return "'"+String(v).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";}
+function bindActionButtons(){document.querySelectorAll("[data-edit-open]").forEach(b=>b.onclick=()=>editOpen(b.dataset.editOpen));document.querySelectorAll("[data-edit-use]").forEach(b=>b.onclick=()=>editUse(b.dataset.editUse));document.querySelectorAll("[data-delete-kind]").forEach(b=>b.onclick=()=>delRecord(b.dataset.deleteKind,b.dataset.deleteId));}
 function fillView(){
   let s=$("stocklist");
-  s.innerHTML=db.o.length?db.o.slice().reverse().map(o=>'<div class="item"><b>'+o.name+'</b><br><span class="small">Lot '+(o.lot||"-")+' • Exp '+(o.exp||"-")+' • '+(o.loc||"-")+'</span><br>Sisa: <b>'+stock(o)+' '+o.unit+'</b><br><button class="btn secondary" onclick="editOpen('+jsArg(o.id)+')">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\'o\','+jsArg(o.id)+')">🗑️ Hapus</button></div>').join(''):'<span class="small">Belum ada data.</span>';
+  s.innerHTML=db.o.length?db.o.slice().reverse().map(o=>'<div class="item"><b>'+o.name+'</b><br><span class="small">Lot '+(o.lot||"-")+' • Exp '+(o.exp||"-")+' • '+(o.loc||"-")+'</span><br>Sisa: <b>'+stock(o)+' '+o.unit+'</b><br><button class="btn secondary" data-edit-open="'+String(o.id)+'">✏️ Edit</button> <button class="btn secondary" data-delete-kind="o" data-delete-id="'+String(o.id)+'">🗑️ Hapus</button></div>').join(''):'<span class="small">Belum ada data.</span>';
   let u=$("uselot");
   u.innerHTML=db.o.filter(o=>stock(o)>0).map(o=>'<option value="'+String(o.id)+'">'+o.name+' — Lot '+(o.lot||"-")+ ' — '+stock(o)+' '+o.unit+'</option>').join('');
   let h=[...db.o.map(o=>({d:o.od,k:"Pembukaan",name:o.name,lot:o.lot,q:o.qty,unit:o.unit,id:o.id})),...db.u.map(x=>({d:x.date,k:"Pemakaian",name:x.name,lot:x.lot,q:x.qty,unit:x.unit,id:x.id}))].sort((a,b)=>b.d.localeCompare(a.d));
-  $("histlist").innerHTML=h.length?h.map(x=>'<div class="item"><b>'+x.k+' — '+x.name+'</b><br><span class="small">'+x.d+' • Lot '+(x.lot||"-")+' • '+x.q+' '+x.unit+'</span><br><button class="btn secondary" onclick="'+(x.k==="Pembukaan"?'editOpen('+jsArg(x.id)+')':'editUse('+jsArg(x.id)+')')+'">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\''+(x.k==="Pembukaan"?'o':'u')+'\','+jsArg(x.id)+')">🗑️ Hapus</button></div>').join(''):'<span class="small">Belum ada riwayat.</span>';
+  $("histlist").innerHTML=h.length?h.map(x=>'<div class="item"><b>'+x.k+' — '+x.name+'</b><br><span class="small">'+x.d+' • Lot '+(x.lot||"-")+' • '+x.q+' '+x.unit+'</span><br><button class="btn secondary" '+(x.k==="Pembukaan"?'data-edit-open="'+String(x.id)+'"':'data-edit-use="'+String(x.id)+'"')+'>✏️ Edit</button> <button class="btn secondary" data-delete-kind="'+(x.k==="Pembukaan"?'o':'u')+'" data-delete-id="'+String(x.id)+'">🗑️ Hapus</button></div>').join(''):'<span class="small">Belum ada riwayat.</span>';
+  bindActionButtons();
 }
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$(b.dataset.t).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");fillView()});
 function dl(blob,n){let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=n;a.click()}
