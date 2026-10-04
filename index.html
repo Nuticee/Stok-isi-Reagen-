@@ -1,6 +1,6 @@
 <!doctype html><html lang="id"><head>
 <meta charset="utf-8"><meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stok Reagen Lite V2</title>
+<title>Stok Reagen Lite</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial;background:#f3f5f7;color:#17202a}
 header{background:#111827;color:#fff;padding:14px}h1{font-size:19px;margin:0}.sub{font-size:12px;opacity:.75}
@@ -29,6 +29,7 @@ label{display:block;font-size:12px;font-weight:bold;margin:8px 0 4px}input,selec
 <div class="row"><div><label>Lot / Batch</label><input id="lot"></div><div><label>Expired</label><input id="exp" type="date"></div></div>
 <div class="row"><div><label>Tanggal Pembukaan</label><input id="od" type="date"></div><div><label>Jumlah Awal</label><input id="qty" type="number" min="1"></div></div>
 <div class="row"><div><label>Satuan</label><input id="unit" placeholder="test / strip / pcs"></div><div><label>Lokasi</label><select id="loc"><option>Lemari Reagen</option><option>Kulkas / Lemari Pendingin</option><option>Suhu Ruang</option><option>Lainnya</option></select></div></div>
+<div class="row"><div><label>Petugas</label><input id="openStaff" placeholder="Nama petugas"></div><div><label>Catatan</label><input id="openNotes" placeholder="Catatan"></div></div>
 <button class="btn primary" id="saveOpen" style="width:100%;margin-top:10px">Simpan Pembukaan</button></div>
 </section>
 <section id="use" class="hidden"><div class="card"><b>🧪 Pemakaian</b><label>Reagen / Lot</label><select id="uselot"></select><label>Jumlah</label><input id="useqty" type="number" min="1"><label>Tanggal</label><input id="ud" type="date"><label>Petugas</label><input id="staff"><button class="btn primary" id="saveUse" style="width:100%;margin-top:10px">Simpan Pemakaian</button></div></section>
@@ -75,8 +76,8 @@ async function saveOpenRemote(){
   try{
     const unit=$("unit").value.trim()||"unit",loc=$("loc").value;
     const m=await ensureMaster(n,$("barcode").value.trim(),unit,loc);
-    const ins=await supabaseClient.from("pembukaan_reagen").insert({master_reagen_id:m.id,nama_reagen:n,lot:$("lot").value.trim()||null,expired:$("exp").value||null,tanggal_pembukaan:$("od").value,jumlah_awal:q,satuan:unit,lokasi:loc,petugas:$("staff")?.value?.trim()||null,catatan:$("notes")?.value?.trim()||null}).select().single();
-    if(ins.error)throw ins.error; alert("Pembukaan tersimpan"); await loadRemote(); ["barcode","name","lot","exp","qty","unit"].forEach(x=>$(x).value=""); $("od").value=today();
+    const ins=await supabaseClient.from("pembukaan_reagen").insert({master_reagen_id:m.id,nama_reagen:n,lot:$("lot").value.trim()||null,expired:$("exp").value||null,tanggal_pembukaan:$("od").value,jumlah_awal:q,satuan:unit,lokasi:loc,petugas:$("openStaff")?.value?.trim()||null,catatan:$("openNotes")?.value?.trim()||null}).select().single();
+    if(ins.error)throw ins.error; alert("Pembukaan tersimpan"); await loadRemote(); ["barcode","name","lot","exp","qty","unit","openStaff","openNotes"].forEach(x=>$(x).value=""); $("od").value=today();
   }catch(e){console.error(e);alert("Gagal menyimpan ke database: "+e.message)}
 }
 function identify(v){
@@ -207,10 +208,71 @@ $("cameraFile").onchange=e=>decodeWithService(e.target.files[0]);
 $("photoFile").onchange=e=>decodeWithService(e.target.files[0]);
 $("saveOpen").onclick=saveOpenRemote;
 $("saveUse").onclick=async()=>{let o=db.o.find(x=>x.id==$("uselot").value),q=+$("useqty").value;if(!o||!q){alert("Pilih reagen dan jumlah.");return}if(q>stock(o)){alert("Jumlah melebihi stok.");return}try{const ins=await supabaseClient.from("pemakaian_reagen").insert({pembukaan_id:o.id,master_reagen_id:o.masterId||null,nama_reagen:o.name,lot:o.lot||null,tanggal_pemakaian:$("ud").value,jumlah_pakai:q,satuan:o.unit,lokasi:o.loc||null,petugas:$("staff").value.trim()||null,catatan:null}).select().single();if(ins.error)throw ins.error;alert("Pemakaian tersimpan");$("useqty").value="";$("staff").value="";await loadRemote()}catch(e){console.error(e);alert("Gagal menyimpan ke database: "+e.message)}};
-async function editOpen(id){const o=db.o.find(x=>x.id==id);if(!o)return;const n=prompt("Nama reagen",o.name);if(n===null)return;const lot=prompt("LOT / Batch",o.lot||"");if(lot===null)return;const exp=prompt("Expired (YYYY-MM-DD)",o.exp||"");if(exp===null)return;const od=prompt("Tanggal pembukaan (YYYY-MM-DD)",o.od);if(od===null)return;const qty=prompt("Jumlah awal",o.qty);if(qty===null)return;const unit=prompt("Satuan",o.unit||"unit");if(unit===null)return;const loc=prompt("Lokasi",o.loc||"");if(loc===null)return;try{const up=await supabaseClient.from("pembukaan_reagen").update({nama_reagen:n.trim()||o.name,lot:lot.trim()||null,expired:exp||null,tanggal_pembukaan:od,jumlah_awal:+qty||o.qty,satuan:unit.trim()||"unit",lokasi:loc.trim()||o.loc}).eq("id",id);if(up.error)throw up.error;await loadRemote()}catch(e){alert("Gagal mengubah data: "+e.message)}}
-async function editUse(id){const x=db.u.find(v=>v.id==id);if(!x)return;const date=prompt("Tanggal pemakaian (YYYY-MM-DD)",x.date);if(date===null)return;const q=prompt("Jumlah pemakaian",x.qty);if(q===null)return;const staff=prompt("Petugas",x.staff||"");if(staff===null)return;const o=db.o.find(v=>v.id==x.oid);if(o && (+q>stock(o)+x.qty)){alert("Jumlah melebihi stok.");return}try{const up=await supabaseClient.from("pemakaian_reagen").update({tanggal_pemakaian:date,jumlah_pakai:+q||x.qty,petugas:staff}).eq("id",id);if(up.error)throw up.error;await loadRemote()}catch(e){alert("Gagal mengubah data: "+e.message)}}
+async function editOpen(id){
+  const o=db.o.find(x=>String(x.id)===String(id));
+  if(!o){alert("Data pembukaan tidak ditemukan.");return;}
+  const n=prompt("Nama reagen / pemeriksaan",o.name||""); if(n===null)return;
+  const lot=prompt("LOT / Batch",o.lot||""); if(lot===null)return;
+  const exp=prompt("Expired (YYYY-MM-DD)",o.exp||""); if(exp===null)return;
+  const od=prompt("Tanggal pembukaan (YYYY-MM-DD)",o.od||""); if(od===null)return;
+  const qtyRaw=prompt("Jumlah awal",String(o.qty??"")); if(qtyRaw===null)return;
+  const unit=prompt("Satuan (test / strip / pcs)",o.unit||"unit"); if(unit===null)return;
+  const loc=prompt("Lokasi",o.loc||""); if(loc===null)return;
+  const staff=prompt("Petugas",o.staff||""); if(staff===null)return;
+  const notes=prompt("Catatan",o.notes||""); if(notes===null)return;
+  const qty=Number(qtyRaw);
+  if(!n.trim()||!od||!Number.isFinite(qty)||qty<=0){alert("Data pembukaan tidak valid.");return;}
+  const used=db.u.filter(x=>String(x.oid)===String(o.id)).reduce((a,x)=>a+(Number(x.qty)||0),0);
+  if(qty<used){alert("Jumlah awal tidak boleh lebih kecil dari total pemakaian yang sudah tercatat ("+used+").");return;}
+  if(!confirm("Simpan perubahan data pembukaan ini?"))return;
+  try{
+    const up=await supabaseClient.from("pembukaan_reagen").update({
+      nama_reagen:n.trim(),lot:lot.trim()||null,expired:exp||null,tanggal_pembukaan:od,
+      jumlah_awal:qty,satuan:unit.trim()||"unit",lokasi:loc.trim()||null,
+      petugas:staff.trim()||null,catatan:notes.trim()||null,updated_at:new Date().toISOString()
+    }).eq("id",id);
+    if(up.error)throw up.error;
+    alert("Data pembukaan berhasil diubah.");
+    await loadRemote();
+  }catch(e){console.error(e);alert("Gagal mengubah data pembukaan: "+e.message)}
+}
+async function editUse(id){
+  const x=db.u.find(v=>String(v.id)===String(id));
+  if(!x){alert("Data pemakaian tidak ditemukan.");return;}
+  const o=db.o.find(v=>String(v.id)===String(x.oid));
+  const name=prompt("Nama reagen / pemeriksaan",x.name||""); if(name===null)return;
+  const lot=prompt("LOT / Batch",x.lot||""); if(lot===null)return;
+  const date=prompt("Tanggal pemakaian (YYYY-MM-DD)",x.date||""); if(date===null)return;
+  const qtyRaw=prompt("Jumlah pemakaian",String(x.qty??"")); if(qtyRaw===null)return;
+  const unit=prompt("Satuan",x.unit||o?.unit||"unit"); if(unit===null)return;
+  const loc=prompt("Lokasi",x.loc||o?.loc||""); if(loc===null)return;
+  const staff=prompt("Petugas",x.staff||""); if(staff===null)return;
+  const notes=prompt("Catatan",x.notes||""); if(notes===null)return;
+  const qty=Number(qtyRaw);
+  if(!name.trim()||!date||!Number.isFinite(qty)||qty<=0){alert("Data pemakaian tidak valid.");return;}
+  if(o && qty>stock(o)+Number(x.qty||0)){alert("Jumlah pemakaian melebihi stok yang tersedia.");return;}
+  if(!confirm("Simpan perubahan data pemakaian ini?"))return;
+  try{
+    const up=await supabaseClient.from("pemakaian_reagen").update({
+      nama_reagen:name.trim(),lot:lot.trim()||null,tanggal_pemakaian:date,
+      jumlah_pakai:qty,satuan:unit.trim()||"unit",lokasi:loc.trim()||null,
+      petugas:staff.trim()||null,catatan:notes.trim()||null,updated_at:new Date().toISOString()
+    }).eq("id",id);
+    if(up.error)throw up.error;
+    alert("Data pemakaian berhasil diubah.");
+    await loadRemote();
+  }catch(e){console.error(e);alert("Gagal mengubah data pemakaian: "+e.message)}
+}
 async function delRecord(kind,id){if(!confirm("Hapus data ini?"))return;try{if(kind==="o"){const hasUse=db.u.some(x=>x.oid==id);if(hasUse){alert("Pembukaan ini masih memiliki data pemakaian. Hapus data pemakaian terlebih dahulu.");return}const r=await supabaseClient.from("pembukaan_reagen").delete().eq("id",id);if(r.error)throw r.error}else{const r=await supabaseClient.from("pemakaian_reagen").delete().eq("id",id);if(r.error)throw r.error}await loadRemote()}catch(e){alert("Gagal menghapus data: "+e.message)}}
-function fillView(){let s=$("stocklist");s.innerHTML=db.o.length?db.o.slice().reverse().map(o=>'<div class="item"><b>'+o.name+'</b><br><span class="small">Lot '+(o.lot||"-")+' • Exp '+(o.exp||"-")+' • '+o.loc+'</span><br>Sisa: <b>'+stock(o)+' '+o.unit+'</b><br><button class="btn secondary" onclick="editOpen('+o.id+')">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\'o\','+o.id+')">🗑️ Hapus</button></div>').join(""):'<span class="small">Belum ada data.</span>';let u=$("uselot");u.innerHTML=db.o.filter(o=>stock(o)>0).map(o=>'<option value="'+o.id+'">'+o.name+' — Lot '+(o.lot||"-")+ ' — '+stock(o)+' '+o.unit+'</option>').join("");let h=[...db.o.map(o=>({d:o.od,k:"Pembukaan",name:o.name,lot:o.lot,q:o.qty,unit:o.unit,id:o.id})),...db.u.map(x=>({d:x.date,k:"Pemakaian",name:x.name,lot:x.lot,q:x.qty,unit:x.unit,id:x.id}))].sort((a,b)=>b.d.localeCompare(a.d));$("histlist").innerHTML=h.length?h.map(x=>'<div class="item"><b>'+x.k+' — '+x.name+'</b><br><span class="small">'+x.d+' • Lot '+(x.lot||"-")+' • '+x.q+' '+x.unit+'</span><br><button class="btn secondary" onclick="'+(x.k==="Pembukaan"?'editOpen('+x.id+')':'editUse('+x.id+')')+'">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\''+(x.k==="Pembukaan"?'o':'u')+'\','+x.id+')">🗑️ Hapus</button></div>').join(""):'<span class="small">Belum ada riwayat.</span>'}
+function jsArg(v){return JSON.stringify(String(v));}
+function fillView(){
+  let s=$("stocklist");
+  s.innerHTML=db.o.length?db.o.slice().reverse().map(o=>'<div class="item"><b>'+o.name+'</b><br><span class="small">Lot '+(o.lot||"-")+' • Exp '+(o.exp||"-")+' • '+(o.loc||"-")+'</span><br>Sisa: <b>'+stock(o)+' '+o.unit+'</b><br><button class="btn secondary" onclick="editOpen('+jsArg(o.id)+')">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\'o\','+jsArg(o.id)+')">🗑️ Hapus</button></div>').join(''):'<span class="small">Belum ada data.</span>';
+  let u=$("uselot");
+  u.innerHTML=db.o.filter(o=>stock(o)>0).map(o=>'<option value="'+String(o.id)+'">'+o.name+' — Lot '+(o.lot||"-")+ ' — '+stock(o)+' '+o.unit+'</option>').join('');
+  let h=[...db.o.map(o=>({d:o.od,k:"Pembukaan",name:o.name,lot:o.lot,q:o.qty,unit:o.unit,id:o.id})),...db.u.map(x=>({d:x.date,k:"Pemakaian",name:x.name,lot:x.lot,q:x.qty,unit:x.unit,id:x.id}))].sort((a,b)=>b.d.localeCompare(a.d));
+  $("histlist").innerHTML=h.length?h.map(x=>'<div class="item"><b>'+x.k+' — '+x.name+'</b><br><span class="small">'+x.d+' • Lot '+(x.lot||"-")+' • '+x.q+' '+x.unit+'</span><br><button class="btn secondary" onclick="'+(x.k==="Pembukaan"?'editOpen('+jsArg(x.id)+')':'editUse('+jsArg(x.id)+')')+'">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\''+(x.k==="Pembukaan"?'o':'u')+'\','+jsArg(x.id)+')">🗑️ Hapus</button></div>').join(''):'<span class="small">Belum ada riwayat.</span>';
+}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$(b.dataset.t).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");fillView()});
 function dl(blob,n){let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=n;a.click()}
 $("backup").onclick=()=>dl(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),"backup_stok_reagen.json");
