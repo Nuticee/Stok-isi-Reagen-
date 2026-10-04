@@ -1,12 +1,7 @@
-const CACHE_NAME = "stok-reagen-v4";
-const CORE = ["./", "./index.html", "./manifest.json"];
+const CACHE = "stok-reagen-lite-v5";
 
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(CORE))
-      .then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
@@ -14,34 +9,39 @@ self.addEventListener("activate", event => {
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(k => k !== CACHE_NAME)
-          .map(k => caches.delete(k))
+          .filter(key => key !== CACHE)
+          .map(key => caches.delete(key))
       )
     ).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
+  const req = event.request;
+  const url = new URL(req.url);
 
-  // Jangan intercept request ke domain lain (termasuk Supabase).
-  // Biarkan browser mengakses API eksternal secara langsung.
-  const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin !== self.location.origin) return;
+  // Jangan pernah cache HTML utama atau request Supabase.
+  if (
+    req.method !== "GET" ||
+    url.hostname.includes("supabase.co") ||
+    req.mode === "navigate" ||
+    url.pathname.endsWith("/index.html")
+  ) {
+    return;
+  }
 
+  // Untuk aset statis, gunakan cache lalu jaringan.
   event.respondWith(
-    caches.match(event.request).then(cached => {
+    caches.match(req).then(cached => {
       if (cached) return cached;
 
-      return fetch(event.request).then(response => {
-        if (response && response.ok) {
+      return fetch(req).then(response => {
+        if (response.ok && url.origin === self.location.origin) {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, copy).catch(() => {});
-          });
+          caches.open(CACHE).then(cache => cache.put(req, copy));
         }
         return response;
-      }).catch(() => caches.match("./index.html"));
+      });
     })
   );
 });
