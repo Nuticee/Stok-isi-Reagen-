@@ -11,6 +11,7 @@ label{display:block;font-size:12px;font-weight:bold;margin:8px 0 4px}input,selec
 #reader{background:#111;border-radius:7px;overflow:hidden;margin:8px 0}#reader video{width:100%;display:block}
 .ok{margin-top:8px;padding:9px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:7px}.warn{margin-top:8px;padding:9px;background:#fff7ed;border:1px solid #fed7aa;border-radius:7px}
 .item{padding:9px 0;border-bottom:1px solid #eee}.small{font-size:12px;color:#667085}.hidden{display:none}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}.modal.show{display:flex}.modalbox{background:#fff;border-radius:12px;padding:14px;width:min(520px,100%);max-height:90vh;overflow:auto}.modalbox h3{margin:0 0 10px}.modal-actions{display:flex;gap:8px;margin-top:12px}.modal-actions .btn{flex:1}
 </style></head><body>
 <header><h1>Stok Reagen Lite</h1><div class="sub">Pembukaan • Pemakaian • Stok</div></header>
 <nav><button class="on" data-t="open">📦 Buka</button><button data-t="use">🧪 Pakai</button><button data-t="stock">📊 Stok</button><button data-t="hist">📋 Riwayat</button></nav>
@@ -35,6 +36,12 @@ label{display:block;font-size:12px;font-weight:bold;margin:8px 0 4px}input,selec
 <section id="stock" class="hidden"><div class="card"><b>📊 Stok</b><div id="stocklist"></div></div></section>
 <section id="hist" class="hidden"><div class="card"><b>📋 Riwayat</b><div id="histlist"></div></div><div class="card"><button class="btn secondary" id="csv">Export CSV</button> <button class="btn secondary" id="backup">Backup JSON</button></div></section>
 </main>
+
+<div id="editModal" class="modal"><div class="modalbox">
+<h3 id="editTitle">✏️ Edit</h3>
+<div id="editFields"></div>
+<div class="modal-actions"><button class="btn secondary" id="editCancel">Batal</button><button class="btn primary" id="editSave">Simpan Perubahan</button></div>
+</div></div>
 <script>
 const K="stok_reagen_lite_v1",M={
 "08806133000021":"Rapid T3","08806133000748":"Rapid CRP","08806133001066":"Rapid HbA1c","08806679002619":"TSH","08806679002411":"T4",
@@ -175,10 +182,57 @@ $("cameraFile").onchange=e=>decodeWithService(e.target.files[0]);
 $("photoFile").onchange=e=>decodeWithService(e.target.files[0]);
 $("saveOpen").onclick=()=>{let n=$("name").value.trim(),q=+$("qty").value;if(!n||!q||!$("od").value){alert("Isi nama, jumlah, dan tanggal pembukaan.");return}db.o.push({id:Date.now(),name:n,barcode:$("barcode").value.trim(),lot:$("lot").value.trim(),exp:$("exp").value,od:$("od").value,qty:q,unit:$("unit").value.trim()||"unit",loc:$("loc").value});save();alert("Pembukaan tersimpan");["barcode","name","lot","exp","qty","unit"].forEach(x=>$(x).value="");$("od").value=today();fillView()};
 $("saveUse").onclick=()=>{let o=db.o.find(x=>x.id==+$("uselot").value),q=+$("useqty").value;if(!o||!q){alert("Pilih reagen dan jumlah.");return}if(q>stock(o)){alert("Jumlah melebihi stok.");return}db.u.push({id:Date.now(),oid:o.id,name:o.name,lot:o.lot,qty:q,unit:o.unit,date:$("ud").value,staff:$("staff").value});save();alert("Pemakaian tersimpan");$("useqty").value="";$("staff").value="";fillView()};
-function editOpen(id){const o=db.o.find(x=>x.id==id);if(!o)return; const n=prompt("Nama reagen",o.name); if(n===null)return; const lot=prompt("LOT / Batch",o.lot||"");if(lot===null)return;const exp=prompt("Expired (YYYY-MM-DD)",o.exp||"");if(exp===null)return;const od=prompt("Tanggal pembukaan (YYYY-MM-DD)",o.od);if(od===null)return;const qty=prompt("Jumlah awal",o.qty);if(qty===null)return;const unit=prompt("Satuan",o.unit||"unit");if(unit===null)return;const loc=prompt("Lokasi",o.loc||"");if(loc===null)return;o.name=n.trim()||o.name;o.lot=lot.trim();o.exp=exp;o.od=od;o.qty=+qty||o.qty;o.unit=unit.trim()||"unit";o.loc=loc.trim()||o.loc;save();fillView()}
-function editUse(id){const x=db.u.find(v=>v.id==id);if(!x)return;const date=prompt("Tanggal pemakaian (YYYY-MM-DD)",x.date);if(date===null)return;const q=prompt("Jumlah pemakaian",x.qty);if(q===null)return;const staff=prompt("Petugas",x.staff||"");if(staff===null)return;const o=db.o.find(v=>v.id==x.oid);if(o && (+q>stock(o)+x.qty)){alert("Jumlah melebihi stok.");return}x.date=date;x.qty=+q||x.qty;x.staff=staff;save();fillView()}
+let editKind="",editId=null;
+function openEdit(kind,id){
+  editKind=kind;editId=id;
+  const f=$("editFields"), title=$("editTitle");
+  if(kind==="o"){
+    const o=db.o.find(x=>x.id==id);if(!o)return;
+    title.textContent="✏️ Edit Pembukaan Reagen";
+    f.innerHTML=`<label>Nama Reagen / Pemeriksaan</label><input id="ef_name" value="${esc(o.name)}">
+      <div class="row"><div><label>Lot / Batch</label><input id="ef_lot" value="${esc(o.lot||"")}"></div><div><label>Expired</label><input id="ef_exp" type="date" value="${esc(o.exp||"")}"></div></div>
+      <div class="row"><div><label>Tanggal Pembukaan</label><input id="ef_date" type="date" value="${esc(o.od||"")}"></div><div><label>Jumlah Awal</label><input id="ef_qty" type="number" min="1" value="${o.qty||1}"></div></div>
+      <div class="row"><div><label>Satuan</label><input id="ef_unit" value="${esc(o.unit||"unit")}"></div><div><label>Lokasi</label><select id="ef_loc"><option>Lemari Reagen</option><option>Kulkas / Lemari Pendingin</option><option>Suhu Ruang</option><option>Lainnya</option></select></div></div>`;
+    $("ef_loc").value=o.loc||"Lemari Reagen";
+  }else{
+    const x=db.u.find(v=>v.id==id);if(!x)return;
+    const o=db.o.find(v=>v.id==x.oid);
+    title.textContent="✏️ Edit Pemakaian";
+    f.innerHTML=`<div class="ok">Reagen: <b>${esc(o?o.name:x.name)}</b><br>Lot: <b>${esc(o?o.lot:(x.lot||"-"))}</b><br><span class="small">Nama dan LOT mengikuti pembukaan/lot yang dipakai. Untuk mengubahnya, edit data Pembukaan.</span></div>
+      <div class="row"><div><label>Tanggal Pemakaian</label><input id="ef_date" type="date" value="${esc(x.date||"")}"></div><div><label>Jumlah Pemakaian</label><input id="ef_qty" type="number" min="1" value="${x.qty||1}"></div></div>
+      <label>Petugas</label><input id="ef_staff" value="${esc(x.staff||"")}">`;
+  }
+  $("editModal").classList.add("show");
+}
+function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function closeEdit(){$("editModal").classList.remove("show");editKind="";editId=null;}
+function saveEdit(){
+  if(editKind==="o"){
+    const o=db.o.find(x=>x.id==editId);if(!o)return;
+    const qty=+$('ef_qty').value;
+    const used=db.u.filter(v=>v.oid==o.id).reduce((a,v)=>a+v.qty,0);
+    if(!$('ef_name').value.trim()||!qty||!$('ef_date').value){alert("Isi nama, jumlah, dan tanggal pembukaan.");return;}
+    if(qty<used){alert("Jumlah awal tidak boleh lebih kecil dari total pemakaian yang sudah tercatat ("+used+").");return;}
+    o.name=$('ef_name').value.trim();o.lot=$('ef_lot').value.trim();o.exp=$('ef_exp').value;o.od=$('ef_date').value;o.qty=qty;o.unit=$('ef_unit').value.trim()||"unit";o.loc=$('ef_loc').value;
+    db.u.filter(v=>v.oid==o.id).forEach(v=>{v.name=o.name;v.lot=o.lot;v.unit=o.unit});
+    save();closeEdit();fillView();
+  }else if(editKind==="u"){
+    const x=db.u.find(v=>v.id==editId);if(!x)return;
+    const q=+$('ef_qty').value,o=db.o.find(v=>v.id==x.oid);
+    if(!q||!$('ef_date').value){alert("Isi jumlah dan tanggal pemakaian.");return;}
+    if(o && q>stock(o)+x.qty){alert("Jumlah melebihi stok.");return;}
+    x.date=$('ef_date').value;x.qty=q;x.staff=$('ef_staff').value.trim();
+    if(o){x.name=o.name;x.lot=o.lot;x.unit=o.unit;}
+    save();closeEdit();fillView();
+  }
+}
+function editOpen(id){openEdit("o",id)}
+function editUse(id){openEdit("u",id)}
+$("editCancel").onclick=closeEdit;
+$("editSave").onclick=saveEdit;
+$("editModal").onclick=e=>{if(e.target.id==="editModal")closeEdit()};
 function delRecord(kind,id){if(!confirm("Hapus data ini?"))return;if(kind==="o")db.o=db.o.filter(x=>x.id!=id);else db.u=db.u.filter(x=>x.id!=id);save();fillView()}
-function fillView(){let s=$("stocklist");s.innerHTML=db.o.length?db.o.slice().reverse().map(o=>'<div class="item"><b>'+o.name+'</b><br><span class="small">Lot '+(o.lot||"-")+' • Exp '+(o.exp||"-")+' • '+o.loc+'</span><br>Sisa: <b>'+stock(o)+' '+o.unit+'</b><br><button class="btn secondary" onclick="editOpen('+o.id+')">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\'o\','+o.id+')">🗑️ Hapus</button></div>').join(""):'<span class="small">Belum ada data.</span>';let u=$("uselot");u.innerHTML=db.o.filter(o=>stock(o)>0).map(o=>'<option value="'+o.id+'">'+o.name+' — Lot '+(o.lot||"-")+ ' — '+stock(o)+' '+o.unit+'</option>').join("");let h=[...db.o.map(o=>({d:o.od,k:"Pembukaan",name:o.name,lot:o.lot,q:o.qty,unit:o.unit,id:o.id})),...db.u.map(x=>({d:x.date,k:"Pemakaian",name:x.name,lot:x.lot,q:x.qty,unit:x.unit,id:x.id}))].sort((a,b)=>b.d.localeCompare(a.d));$("histlist").innerHTML=h.length?h.map(x=>'<div class="item"><b>'+x.k+' — '+x.name+'</b><br><span class="small">'+x.d+' • Lot '+(x.lot||"-")+' • '+x.q+' '+x.unit+'</span><br><button class="btn secondary" onclick="'+(x.k==="Pembukaan"?'editOpen('+x.id+')':'editUse('+x.id+')')+'">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\''+(x.k==="Pembukaan"?'o':'u')+'\','+x.id+')">🗑️ Hapus</button></div>').join(""):'<span class="small">Belum ada riwayat.</span>'}
+function fillView(){let s=$("stocklist");s.innerHTML=db.o.length?db.o.slice().reverse().map(o=>'<div class="item"><b>'+o.name+'</b><br><span class="small">Lot '+(o.lot||"-")+' • Exp '+(o.exp||"-")+' • '+o.loc+'</span><br>Sisa: <b>'+stock(o)+' '+o.unit+'</b><br><button class="btn secondary" onclick="editOpen('+o.id+')">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\'o\','+o.id+')">🗑️ Hapus</button></div>').join(""):'<span class="small">Belum ada data.</span>';let u=$("uselot");u.innerHTML=db.o.filter(o=>stock(o)>0).map(o=>'<option value="'+o.id+'">'+o.name+' — Lot '+(o.lot||"-")+ ' — '+stock(o)+' '+o.unit+'</option>').join("");let h=[...db.o.map(o=>({d:o.od,k:"Pembukaan",name:o.name,lot:o.lot,q:o.qty,unit:o.unit,id:o.id})),...db.u.map(x=>{const o=db.o.find(v=>v.id==x.oid);return {d:x.date,k:"Pemakaian",name:o?o.name:x.name,lot:o?o.lot:x.lot,q:x.qty,unit:o?o.unit:x.unit,id:x.id}})].sort((a,b)=>b.d.localeCompare(a.d));$("histlist").innerHTML=h.length?h.map(x=>'<div class="item"><b>'+x.k+' — '+x.name+'</b><br><span class="small">'+x.d+' • Lot '+(x.lot||"-")+' • '+x.q+' '+x.unit+'</span><br><button class="btn secondary" onclick="'+(x.k==="Pembukaan"?'editOpen('+x.id+')':'editUse('+x.id+')')+'">✏️ Edit</button> <button class="btn secondary" onclick="delRecord(\''+(x.k==="Pembukaan"?'o':'u')+'\','+x.id+')">🗑️ Hapus</button></div>').join(""):'<span class="small">Belum ada riwayat.</span>'}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$(b.dataset.t).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");fillView()});
 function dl(blob,n){let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=n;a.click()}
 $("backup").onclick=()=>dl(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),"backup_stok_reagen.json");

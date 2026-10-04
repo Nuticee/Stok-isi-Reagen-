@@ -1,4 +1,4 @@
-const CACHE_NAME = "stok-reagen-v3";
+const CACHE_NAME = "stok-reagen-v4";
 const CORE = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", event => {
@@ -16,7 +16,6 @@ self.addEventListener("activate", event => {
     ).then(() => self.clients.claim())
   );
 });
-
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   event.respondWith(
