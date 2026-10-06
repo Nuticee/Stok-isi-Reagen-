@@ -72,7 +72,31 @@ const K="stok_reagen_lite_v1",M={
 "06903053010665":"M-30D DILUENT","06934645995218":"M-10CFL LYSE",
 "06944904052274":"M-52D DILUENT","06944904030210":"Probe Cleanser",
 "10006775997632335320":"M-52DIFF LYSE","04213252799901365193":"M-52LH LYSE",
-"00A10005-0555-042EV":"M-52LH LYSE","00A10005-0559-042DP":"M-52DIFF LYSE"};
+"00A10005-0555-042EV":"M-52LH LYSE","00A10005-0559-042DP":"M-52DIFF LYSE",
+"04547410447873":"Na-K-Cl",
+"08435287125030":"Glucose",
+"08435287125214":"Uric Acid",
+"08435287125054":"Cholesterol",
+"08435287125160":"Urea/BUN-UV",
+"08435287125283":"Triglycerides",
+"08435287125313":"AST/GOT",
+"08435287125023":"Creatinine",
+"4710612033308":"AutoCheck Glucose Strip",
+"4710612033254":"AutoCheck Cholesterol Strip",
+"3101105385317":"AutoCheck Uric Acid Strip"};
+const MASTER_SEED=[
+{name:"Na-K-Cl",barcode:"04547410447873",unit:"test",loc:"Kulkas / Lemari Pendingin"},
+{name:"Glucose",barcode:"08435287125030",unit:"botol",loc:"Kulkas / Lemari Pendingin"},
+{name:"Uric Acid",barcode:"08435287125214",unit:"botol",loc:"Kulkas / Lemari Pendingin"},
+{name:"Cholesterol",barcode:"08435287125054",unit:"botol",loc:"Kulkas / Lemari Pendingin"},
+{name:"Urea/BUN-UV",barcode:"08435287125160",unit:"botol",loc:"Kulkas / Lemari Pendingin"},
+{name:"Triglycerides",barcode:"08435287125283",unit:"botol",loc:"Kulkas / Lemari Pendingin"},
+{name:"AST/GOT",barcode:"08435287125313",unit:"botol",loc:"Kulkas / Lemari Pendingin"},
+{name:"Creatinine",barcode:"08435287125023",unit:"botol",loc:"Kulkas / Lemari Pendingin"},
+{name:"AutoCheck Glucose Strip",barcode:"4710612033308",unit:"strip",loc:"Suhu Ruang"},
+{name:"AutoCheck Cholesterol Strip",barcode:"4710612033254",unit:"strip",loc:"Suhu Ruang"},
+{name:"AutoCheck Uric Acid Strip",barcode:"3101105385317",unit:"strip",loc:"Suhu Ruang"}
+];
 let db={o:[],u:[]},stream=null,masterMap={};
 let dbReady=false;
 const $=id=>document.getElementById(id),today=()=>new Date().toISOString().slice(0,10);
@@ -91,6 +115,28 @@ async function loadRemote(){
   db.u=(uRes.data||[]).map(x=>({id:x.id,oid:x.pembukaan_id,masterId:x.master_reagen_id,name:x.nama_reagen,lot:x.lot||"",qty:+x.jumlah_pakai,unit:x.satuan||"unit",date:x.tanggal_pemakaian,loc:x.lokasi||"",staff:x.petugas||"",notes:x.catatan||""}));
   saveLocal(); dbReady=true; $("syncLabel").textContent="Tersambung"; $("syncLast").textContent="Terakhir sinkron: "+new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}); fillView(); if($("syncStatus"))$("syncStatus").textContent="🟢 Tersinkron dengan database";
 }
+async function syncMasterMapping(){
+  const {data,error}=await supabaseClient.from("master_reagen").select("id,nama_reagen,barcode,satuan_default,lokasi_default");
+  if(error)throw error;
+  const rows=data||[];
+  for(const x of MASTER_SEED){
+    let m=rows.find(r=>r.barcode===x.barcode)||rows.find(r=>r.nama_reagen===x.name);
+    if(m){
+      const patch={};
+      if(m.barcode!==x.barcode)patch.barcode=x.barcode;
+      if((m.satuan_default||"")!==x.unit)patch.satuan_default=x.unit;
+      if((m.lokasi_default||"")!==x.loc)patch.lokasi_default=x.loc;
+      if(Object.keys(patch).length){
+        const r=await supabaseClient.from("master_reagen").update(patch).eq("id",m.id);
+        if(r.error)throw r.error;
+      }
+    }else{
+      const r=await supabaseClient.from("master_reagen").insert({nama_reagen:x.name,barcode:x.barcode,satuan_default:x.unit,lokasi_default:x.loc,batas_minimum:0});
+      if(r.error)throw r.error;
+    }
+  }
+}
+
 async function ensureMaster(name,barcode,unit,loc){
   let q=supabaseClient.from("master_reagen").select("*").eq("nama_reagen",name).limit(1);
   const {data,error}=await q; if(error)throw error;
@@ -363,7 +409,15 @@ $("backup").onclick=()=>dl(new Blob([JSON.stringify(db,null,2)],{type:"applicati
 $("csv").onclick=()=>{let r=[["Tanggal","Jenis","Reagen","Lot","Jumlah","Satuan"]];db.o.forEach(o=>r.push([o.od,"Pembukaan",o.name,o.lot,o.qty,o.unit]));db.u.forEach(x=>r.push([x.date,"Pemakaian",x.name,x.lot,x.qty,x.unit]));dl(new Blob(["\ufeff"+r.map(a=>a.map(v=>'"'+String(v||"").replaceAll('"','""')+'"').join(",")).join("\n")],{type:"text/csv"}),"stok_reagen.csv")};
 document.getElementById("brandHome")?.addEventListener("click",()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$("home").classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));});
 fillView();
-loadRemote().catch(e=>{console.error(e);alert("Database belum terhubung. Cek koneksi internet dan Publishable Key.");});
+(async()=>{
+  try{
+    await syncMasterMapping();
+    await loadRemote();
+  }catch(e){
+    console.error(e);
+    await loadRemote().catch(err=>{console.error(err);alert("Database belum terhubung. Cek koneksi internet dan Publishable Key.");});
+  }
+})();
 </script><script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
