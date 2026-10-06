@@ -195,8 +195,14 @@ function parseGS1(v){
 }
 function gs1Date(s){
   if(!/^\d{6}$/.test(s))return "";
-  const yy=s.substring(0,2),mm=s.substring(2,4),dd=s.substring(4,6);
-  return "20"+yy+"-"+mm+"-"+dd;
+  const yy=+s.substring(0,2), mm=+s.substring(2,4), dd=+s.substring(4,6);
+  if(mm<1 || mm>12)return "";
+  // GS1 AI (17): day "00" means the last valid day of that month.
+  // This also handles leap years correctly (e.g. 280200 -> 2028-02-29).
+  const year=2000+yy;
+  const day=dd===0 ? new Date(Date.UTC(year,mm,0)).getUTCDate() : dd;
+  if(day<1 || day>new Date(Date.UTC(year,mm,0)).getUTCDate())return "";
+  return year+"-"+String(mm).padStart(2,"0")+"-"+String(day).padStart(2,"0");
 }
 function fill(){
   const v=$("barcode").value.trim();
