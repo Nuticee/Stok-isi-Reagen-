@@ -165,21 +165,29 @@ function identify(v){
 function normalizeBarcode(v){
   return String(v||"")
     .replace(/\]d[0-9]/gi,"")
-    .replace(/[\x1d\u001d\s()]/g,"")
+    .replace(/[\s()]/g,"")
     .trim();
 }
 function parseGS1(v){
-  v=normalizeBarcode(v);
+  // Jangan membuang GS1 Group Separator (ASCII 29); separator ini penting
+  // untuk menentukan akhir LOT/field yang panjangnya variable.
+  v=String(v||"").replace(/\]d[0-9]/gi,"").trim();
   const out={gtin:"",lot:"",exp:"",mfg:""};
   const pos=v.indexOf("01");
   if(pos>=0 && v.length>=pos+16){
     out.gtin=v.substring(pos+2,pos+16);
     let p=pos+16;
     while(p<v.length){
+      if(v.charCodeAt(p)===29){p++;continue;}
       const ai=v.substring(p,p+2);
       if(ai==="11" && p+8<=v.length){out.mfg=v.substring(p+2,p+8);p+=8;continue;}
       if(ai==="17" && p+8<=v.length){out.exp=v.substring(p+2,p+8);p+=8;continue;}
-      if(ai==="10"){out.lot=v.substring(p+2);break;}
+      if(ai==="10"){
+        const end=v.indexOf(String.fromCharCode(29),p+2);
+        out.lot=v.substring(p+2,end>=0?end:v.length);
+        p=end>=0?end+1:v.length;
+        continue;
+      }
       p++;
     }
   }
@@ -209,66 +217,72 @@ function fill(){
 }
 let fillTimer=null;
 $("barcode").oninput=()=>{clearTimeout(fillTimer);fillTimer=setTimeout(fill,100)};
-async function decodeLocalFirst(file){
-  if(!file)return;
-  if("BarcodeDetector" in window){
+function barcodeValueList(codes){
+  return (codes||[]).map(c=>String(c.rawValue||"").trim()).filter(Boolean);
+}
+async function detectLocalBitmap(bitmap){
+  if(!("BarcodeDetector" in window))return [];
+  const formats=["data_matrix","code_128","code_39","ean_13","ean_8","upc_a","upc_e","itf","codabar","qr_code"];
+  try{
+    const detector=new BarcodeDetector({formats});
+    return barcodeValueList(await detector.detect(bitmap));
+  }catch(e){
     try{
-      const detector=new BarcodeDetector({
-        formats:["data_matrix","code_128","code_39","ean_13","ean_8","upc_a","upc_e"]
-      });
-      const bitmap=await createImageBitmap(file);
-      const codes=await detector.detect(bitmap);
-      if(bitmap.close)bitmap.close();
-      if(codes&&codes.length){
-        const value=String(codes[0].rawValue||"").trim();
-        if(value){$("barcode").value=value;fill();return true;}
-      }
-    }catch(e){
-      try{
-        const detector=new BarcodeDetector();
-        const bitmap=await createImageBitmap(file);
-        const codes=await detector.detect(bitmap);
-        if(bitmap.close)bitmap.close();
-        if(codes&&codes.length){
-          const value=String(codes[0].rawValue||"").trim();
-          if(value){$("barcode").value=value;fill();return true;}
-        }
-      }catch(e2){}
-    }
+      const detector=new BarcodeDetector();
+      return barcodeValueList(await detector.detect(bitmap));
+    }catch(e2){return [];}
   }
+}
+async function decodeLocalFirst(file){
+  if(!file||!("BarcodeDetector" in window))return false;
+  try{
+    const bitmap=await createImageBitmap(file);
+    const values=await detectLocalBitmap(bitmap);
+    if(bitmap.close)bitmap.close();
+    // Kalau ada beberapa barcode dalam satu foto, prioritaskan yang sudah
+    // dikenal mapping-nya; kalau belum, ambil hasil pertama.
+    const known=values.find(v=>M[parseGS1(v).gtin]||identify(v));
+    const value=known||values[0]||"";
+    if(value){$("barcode").value=value;fill();return true;}
+  }catch(e){}
   return false;
+}
+async function makeScanImage(file,maxW,quality){
+  try{
+    const bmp=await createImageBitmap(file);
+    const scale=Math.min(1,maxW/bmp.width);
+    if(scale===1){if(bmp.close)bmp.close();return file;}
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(bmp.width*scale));
+    canvas.height=Math.max(1,Math.round(bmp.height*scale));
+    const ctx=canvas.getContext("2d",{alpha:false});
+    ctx.drawImage(bmp,0,0,canvas.width,canvas.height);
+    if(bmp.close)bmp.close();
+    return await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",quality));
+  }catch(e){return file;}
 }
 async function decodeWithService(file){
   if(!file)return;
-  $("result").innerHTML='<div class="ok">⏳ Membaca barcode…</div>';
+  $("result").innerHTML='<div class="ok">⏳ Membaca barcode 1D / 2D…</div>';
   if(await decodeLocalFirst(file))return;
-  try{
-    let sendFile=file;
+  // Coba gambar asli terlebih dahulu agar DataMatrix kecil tidak kehilangan detail.
+  const attempts=[file,await makeScanImage(file,2200,0.92),await makeScanImage(file,1400,0.86)];
+  for(const sendFile of attempts){
     try{
-      const bmp=await createImageBitmap(file);
-      const maxW=1400, scale=Math.min(1,maxW/bmp.width);
-      const canvas=document.createElement("canvas");
-      canvas.width=Math.round(bmp.width*scale);
-      canvas.height=Math.round(bmp.height*scale);
-      const ctx=canvas.getContext("2d",{alpha:false});
-      ctx.drawImage(bmp,0,0,canvas.width,canvas.height);
-      if(bmp.close)bmp.close();
-      const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.82));
-      if(blob)sendFile=blob;
+      const fd=new FormData();
+      fd.append("File",sendFile,"barcode.jpg");
+      const res=await fetch("https://api.leepow.com/barcode",{method:"POST",body:fd});
+      if(!res.ok)continue;
+      const data=await res.json(),items=data&&data.data?data.data:[];
+      const values=items.map(x=>String(x&&x.value||"").trim()).filter(Boolean);
+      if(!values.length)continue;
+      const value=values.find(v=>M[parseGS1(v).gtin]||identify(v))||values[0];
+      $("barcode").value=value;
+      fill();
+      return;
     }catch(e){}
-    const fd=new FormData();
-    fd.append("File",sendFile,"barcode.jpg");
-    const res=await fetch("https://api.leepow.com/barcode",{method:"POST",body:fd});
-    if(!res.ok)throw new Error();
-    const data=await res.json(),items=data&&data.data?data.data:[];
-    if(!items.length)throw new Error();
-    const value=String(items[0].value||"").trim();
-    if(!value)throw new Error();
-    $("barcode").value=value;
-    fill();
-  }catch(e){
-    $("result").innerHTML='<div class="warn">Barcode belum terbaca. Coba foto lagi dengan barcode terlihat jelas.</div>';
   }
+  $("result").innerHTML='<div class="warn">Barcode belum terbaca. Coba foto lebih dekat atau pastikan garis/DataMatrix terlihat jelas.</div>';
 }
 $("scan").onclick=()=>{
   $("cameraFile").value="";
