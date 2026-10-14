@@ -443,7 +443,7 @@ function fillView(){
   bindActionButtons();
 }
 $("allActivity").onclick=e=>{e.preventDefault();document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));$("hist").classList.remove("hidden");$("home").classList.add("hidden");document.querySelector('nav button[data-t="hist"]')?.classList.add("on");fillView()};
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$(b.dataset.t).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");fillView()});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$(b.dataset.t).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");fillView();if(b.dataset.t==="report")loadAudit()});
 function monthKey(d){return String(d||"").slice(0,7)}
 function updateReport(){
   const month=$("reportMonth")?.value||monthKey(today());
@@ -458,7 +458,7 @@ function updateReport(){
     ...uses.map(u=>({date:u.date,type:"Pemakaian",name:u.name,lot:u.lot||"-",qty:u.qty,unit:u.unit||""}))
   ].sort((a,b)=>a.date.localeCompare(b.date));
   $("reportTable").innerHTML=rows.length?'<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;margin-top:12px"><thead><tr><th style="text-align:left;padding:8px">Tanggal</th><th style="text-align:left;padding:8px">Jenis</th><th style="text-align:left;padding:8px">Reagen</th><th style="text-align:left;padding:8px">LOT</th><th style="text-align:right;padding:8px">Jumlah</th></tr></thead><tbody>'+rows.map(r=>'<tr><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.date)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.type)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.name)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.lot)+'</td><td style="padding:8px;text-align:right;border-top:1px solid #e2e8f0">'+esc(r.qty)+' '+esc(r.unit)+'</td></tr>').join("")+'</tbody></table></div>':'Belum ada pembukaan atau pemakaian pada bulan ini.';
-  $("exportReport").onclick=()=>{const data=[["Tanggal","Jenis","Reagen","LOT","Jumlah","Satuan"],...rows.map(r=>[r.date,r.type,r.name,r.lot,r.qty,r.unit])];dl(new Blob(["\\ufeff"+data.map(a=>a.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(",")).join("\\n")],{type:"text/csv"}),"laporan_reagen_"+month+".csv")};
+  $("exportReport").onclick=()=>{const data=[["Tanggal","Jenis","Reagen","LOT","Jumlah","Satuan"],...rows.map(r=>[r.date,r.type,r.name,r.lot,r.qty,r.unit])];dl(new Blob(["\ufeff"+data.map(a=>a.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(",")).join("\n")],{type:"text/csv"}),"laporan_reagen_"+month+".csv")};
 }
 async function loadAudit(){
   const el=$("auditList"); if(!el)return;
