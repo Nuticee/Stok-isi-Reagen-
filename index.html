@@ -4,7 +4,7 @@
 <style>
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f5f7fb;color:#111827}button,input,select{font:inherit}
 header{background:linear-gradient(135deg,#101d36 0%,#162b4b 55%,#10203a 100%);color:#fff;padding:16px 20px 15px;box-shadow:0 2px 12px rgba(15,27,51,.18)}.brand{display:flex;align-items:center;gap:12px}.brand-icon{font-size:43px;line-height:1}.brand h1{font-size:30px;line-height:1;margin:0;font-weight:850;letter-spacing:-.7px}.brand h1 span{color:#1d9bf0}.sub{font-size:14px;opacity:.82;margin-top:5px}.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}.syncbox{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);border-radius:15px;padding:9px 13px;min-width:145px}.sync{font-size:12px;margin:0;opacity:1}.sync strong{color:#47e28a;font-size:14px}.syncsmall{font-size:11px;opacity:.75;margin-top:2px}.gear{border:0;background:transparent;color:#fff;font-size:27px;cursor:pointer}
-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;background:transparent;padding:14px 18px;max-width:1100px;margin:auto}nav button{border:0;border-radius:16px;background:#e9edf3;color:#111827;padding:14px 10px;font-weight:800;font-size:16px;cursor:pointer;min-height:72px;box-shadow:0 1px 3px rgba(15,23,42,.04)}nav button small{display:block;font-size:11px;font-weight:600;color:#64748b;margin-top:3px}nav .on{background:#101a2e;color:#fff;box-shadow:0 6px 18px rgba(15,27,51,.16)}nav .on small{color:#cbd5e1}
+nav{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;background:transparent;padding:14px 18px;max-width:1100px;margin:auto}nav button{border:0;border-radius:16px;background:#e9edf3;color:#111827;padding:14px 10px;font-weight:800;font-size:16px;cursor:pointer;min-height:72px;box-shadow:0 1px 3px rgba(15,23,42,.04)}nav button small{display:block;font-size:11px;font-weight:600;color:#64748b;margin-top:3px}nav .on{background:#101a2e;color:#fff;box-shadow:0 6px 18px rgba(15,27,51,.16)}nav .on small{color:#cbd5e1}
 main{max-width:1100px;margin:auto;padding:0 18px 28px}.hidden{display:none!important}.card{background:#fff;border:1px solid #e1e7ef;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
 .dashboard-head{display:flex;justify-content:space-between;align-items:center;margin:6px 2px 16px}.dashboard-head h2{font-size:22px;margin:0}.dashboard-head p{margin:4px 0 0;color:#64748b;font-size:12px}.livepill{background:#d1fae5;color:#047857;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.metric{background:#fff;border:1px solid #e3e8ef;border-radius:17px;padding:16px;min-height:112px;position:relative;box-shadow:0 2px 7px rgba(15,23,42,.04)}.metric .ico{position:absolute;right:14px;top:14px;width:43px;height:43px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:21px;background:#f1f5f9}.metric b{display:block;font-size:30px;line-height:1;font-weight:850;margin-bottom:8px}.metric span{font-size:13px;color:#64748b;font-weight:650}.metric.alert b,.metric.alert span{color:#dc2626}.metric.warn b,.metric.warn span{color:#d97706}.metric.safe b,.metric.safe span{color:#059669}
@@ -27,7 +27,7 @@ main{padding:0 10px 18px}.dashboard-head{margin:4px 2px 10px}.dashboard-head h2{
 
 </style></head><body>
 <header><div class="brand" id="brandHome" style="cursor:pointer"><div class="brand-icon">🧪</div><div><h1>Reagen<span>Track</span></h1><div class="sub">Sistem Manajemen Stok Reagen Laboratorium</div></div><div class="header-right"><div class="syncbox"><div class="sync">🟢 <strong id="syncLabel">Tersambung</strong></div><div class="syncsmall" id="syncLast">Terakhir sinkron: —</div></div><button class="gear" title="Pengaturan">⚙️</button></div></div></header>
-<nav><button class="on" data-t="open">📦<br>Buka<small>Reagen Baru</small></button><button data-t="use">🧪<br>Pakai<small>Pemakaian</small></button><button data-t="stock">📊<br>Stok<small>Semua Reagen</small></button><button data-t="hist">📋<br>Riwayat<small>Aktivitas</small></button></nav>
+<nav><button class="on" data-t="open">📦<br>Buka<small>Reagen Baru</small></button><button data-t="use">🧪<br>Pakai<small>Pemakaian</small></button><button data-t="stock">📊<br>Stok<small>Semua Reagen</small></button><button data-t="hist">📋<br>Riwayat<small>Aktivitas</small></button><button data-t="report">📈<br>Laporan<small>Bulanan</small></button></nav>
 <main>
 <section id="home">
 <div class="dashboard-head"><div><h2>Ringkasan Reagen</h2><p id="dashDate">Memuat kondisi stok…</p></div><span class="livepill">● LIVE</span></div>
@@ -61,6 +61,20 @@ main{padding:0 10px 18px}.dashboard-head{margin:4px 2px 10px}.dashboard-head h2{
 <section id="use" class="hidden"><div class="card"><b>🧪 Pemakaian</b><label>Reagen / Lot</label><select id="uselot"></select><label>Jumlah</label><input id="useqty" type="number" min="1"><label>Tanggal</label><input id="ud" type="date"><label>Petugas</label><input id="staff"><button class="btn primary" id="saveUse" style="width:100%;margin-top:10px">Simpan Pemakaian</button></div></section>
 <section id="stock" class="hidden"><div class="card"><b>📊 Stok</b><div id="stocklist"></div></div></section>
 <section id="hist" class="hidden"><div class="card"><b>📋 Riwayat</b><div id="histlist"></div></div><div class="card"><button class="btn secondary" id="csv">Export CSV</button> <button class="btn secondary" id="backup">Backup JSON</button></div></section>
+<section id="report" class="hidden">
+<div class="card"><b>📈 Laporan Bulanan</b><p class="small">Rekap berdasarkan tanggal pembukaan dan tanggal pemakaian dari database bersama.</p>
+<div class="row"><div><label>Pilih bulan</label><input type="month" id="reportMonth"></div><div style="display:flex;align-items:end"><button class="btn primary" id="refreshReport">Tampilkan Laporan</button></div></div>
+<div class="metrics" style="margin-top:14px">
+<div class="metric"><b id="repOpenCount">0</b><span>Pembukaan</span></div>
+<div class="metric warn"><b id="repOpenQty">0</b><span>Total jumlah dibuka</span></div>
+<div class="metric alert"><b id="repUseCount">0</b><span>Pemakaian</span></div>
+<div class="metric safe"><b id="repUseQty">0</b><span>Total jumlah dipakai</span></div>
+</div>
+<div id="reportTable" class="small">Pilih bulan untuk melihat laporan.</div>
+<div style="margin-top:12px"><button class="btn secondary" id="exportReport">Export Laporan Bulanan CSV</button></div>
+</div>
+<div class="card"><b>🕘 Audit Aktivitas Terbaru</b><p class="small">Mencatat aktivitas baru setelah fitur ini aktif. Bukan rekonstruksi perubahan lama.</p><div id="auditList" class="small">Memuat aktivitas…</div></div>
+</section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -151,7 +165,7 @@ async function saveOpenRemote(){
     const unit=$("unit").value.trim()||"unit",loc=$("loc").value;
     const m=await ensureMaster(n,$("barcode").value.trim(),unit,loc);
     const ins=await supabaseClient.from("pembukaan_reagen").insert({master_reagen_id:m.id,nama_reagen:n,lot:$("lot").value.trim()||null,expired:$("exp").value||null,tanggal_pembukaan:$("od").value,jumlah_awal:q,satuan:unit,lokasi:loc,petugas:$("openStaff")?.value?.trim()||null,catatan:$("openNotes")?.value?.trim()||null}).select().single();
-    if(ins.error)throw ins.error; alert("Pembukaan tersimpan"); await loadRemote(); ["barcode","name","lot","exp","qty","unit","openStaff","openNotes"].forEach(x=>$(x).value=""); $("od").value=today();
+    if(ins.error)throw ins.error;await logActivity("Pembukaan","pembukaan",ins.data?.id,n,$("lot").value.trim(),q,unit,$("openStaff")?.value?.trim(),"Pembukaan tersimpan"); alert("Pembukaan tersimpan"); await loadRemote(); ["barcode","name","lot","exp","qty","unit","openStaff","openNotes"].forEach(x=>$(x).value=""); $("od").value=today();
   }catch(e){console.error(e);alert("Gagal menyimpan ke database: "+e.message)}
 }
 function identify(v){
@@ -307,7 +321,7 @@ $("photo").onclick=()=>{
 $("cameraFile").onchange=e=>decodeWithService(e.target.files[0]);
 $("photoFile").onchange=e=>decodeWithService(e.target.files[0]);
 $("saveOpen").onclick=saveOpenRemote;
-$("saveUse").onclick=async()=>{let o=db.o.find(x=>x.id==$("uselot").value),q=+$("useqty").value;if(!o||!q){alert("Pilih reagen dan jumlah.");return}if(q>stock(o)){alert("Jumlah melebihi stok.");return}try{const ins=await supabaseClient.from("pemakaian_reagen").insert({pembukaan_id:o.id,master_reagen_id:o.masterId||null,nama_reagen:o.name,lot:o.lot||null,tanggal_pemakaian:$("ud").value,jumlah_pakai:q,satuan:o.unit,lokasi:o.loc||null,petugas:$("staff").value.trim()||null,catatan:null}).select().single();if(ins.error)throw ins.error;alert("Pemakaian tersimpan");$("useqty").value="";$("staff").value="";await loadRemote()}catch(e){console.error(e);alert("Gagal menyimpan ke database: "+e.message)}};
+$("saveUse").onclick=async()=>{let o=db.o.find(x=>x.id==$("uselot").value),q=+$("useqty").value;if(!o||!q){alert("Pilih reagen dan jumlah.");return}if(q>stock(o)){alert("Jumlah melebihi stok.");return}try{const ins=await supabaseClient.from("pemakaian_reagen").insert({pembukaan_id:o.id,master_reagen_id:o.masterId||null,nama_reagen:o.name,lot:o.lot||null,tanggal_pemakaian:$("ud").value,jumlah_pakai:q,satuan:o.unit,lokasi:o.loc||null,petugas:$("staff").value.trim()||null,catatan:null}).select().single();if(ins.error)throw ins.error;await logActivity("Pemakaian","pemakaian",ins.data?.id,o.name,o.lot,q,o.unit,$("staff").value.trim(),"Pemakaian tersimpan");alert("Pemakaian tersimpan");$("useqty").value="";$("staff").value="";await loadRemote()}catch(e){console.error(e);alert("Gagal menyimpan ke database: "+e.message)}};
 async function editOpen(id){
   const o=db.o.find(x=>String(x.id)===String(id));
   if(!o){alert("Data pembukaan tidak ditemukan.");return;}
@@ -430,9 +444,38 @@ function fillView(){
 }
 $("allActivity").onclick=e=>{e.preventDefault();document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));$("hist").classList.remove("hidden");$("home").classList.add("hidden");document.querySelector('nav button[data-t="hist"]')?.classList.add("on");fillView()};
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$(b.dataset.t).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");fillView()});
+function monthKey(d){return String(d||"").slice(0,7)}
+function updateReport(){
+  const month=$("reportMonth")?.value||monthKey(today());
+  const opens=db.o.filter(o=>monthKey(o.od)===month);
+  const uses=db.u.filter(u=>monthKey(u.date)===month);
+  $("repOpenCount").textContent=opens.length;
+  $("repOpenQty").textContent=opens.reduce((a,o)=>a+(Number(o.qty)||0),0);
+  $("repUseCount").textContent=uses.length;
+  $("repUseQty").textContent=uses.reduce((a,u)=>a+(Number(u.qty)||0),0);
+  const rows=[
+    ...opens.map(o=>({date:o.od,type:"Pembukaan",name:o.name,lot:o.lot||"-",qty:o.qty,unit:o.unit||""})),
+    ...uses.map(u=>({date:u.date,type:"Pemakaian",name:u.name,lot:u.lot||"-",qty:u.qty,unit:u.unit||""}))
+  ].sort((a,b)=>a.date.localeCompare(b.date));
+  $("reportTable").innerHTML=rows.length?'<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;margin-top:12px"><thead><tr><th style="text-align:left;padding:8px">Tanggal</th><th style="text-align:left;padding:8px">Jenis</th><th style="text-align:left;padding:8px">Reagen</th><th style="text-align:left;padding:8px">LOT</th><th style="text-align:right;padding:8px">Jumlah</th></tr></thead><tbody>'+rows.map(r=>'<tr><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.date)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.type)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.name)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.lot)+'</td><td style="padding:8px;text-align:right;border-top:1px solid #e2e8f0">'+esc(r.qty)+' '+esc(r.unit)+'</td></tr>').join("")+'</tbody></table></div>':'Belum ada pembukaan atau pemakaian pada bulan ini.';
+  $("exportReport").onclick=()=>{const data=[["Tanggal","Jenis","Reagen","LOT","Jumlah","Satuan"],...rows.map(r=>[r.date,r.type,r.name,r.lot,r.qty,r.unit])];dl(new Blob(["\\ufeff"+data.map(a=>a.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(",")).join("\\n")],{type:"text/csv"}),"laporan_reagen_"+month+".csv")};
+}
+async function loadAudit(){
+  const el=$("auditList"); if(!el)return;
+  const {data,error}=await supabaseClient.from("reagen_activity_log").select("*").order("created_at",{ascending:false}).limit(30);
+  if(error){el.textContent="Audit trail belum tersedia: "+error.message;return}
+  el.innerHTML=data?.length?data.map(a=>'<div class="item"><b>'+esc(a.action)+' — '+esc(a.nama_reagen)+'</b><br><span class="small">'+esc(new Date(a.created_at).toLocaleString("id-ID"))+' • LOT '+esc(a.lot||"-")+' • '+esc(a.petugas||"Petugas belum diisi")+'</span></div>').join(""):'Belum ada aktivitas baru yang tercatat.';
+}
+async function logActivity(action,entityType,entityId,name,lot,qty,unit,staff,detail){
+  try{const {error}=await supabaseClient.from("reagen_activity_log").insert({action,entity_type:entityType,entity_id:entityId||null,nama_reagen:name,lot:lot||null,jumlah:qty??null,satuan:unit||null,petugas:staff||null,detail:detail||null});if(error)console.warn("Audit log:",error.message)}catch(e){console.warn("Audit log:",e)}
+}
 function dl(blob,n){let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=n;a.click()}
 $("backup").onclick=()=>dl(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),"backup_stok_reagen.json");
 $("csv").onclick=()=>{let r=[["Tanggal","Jenis","Reagen","Lot","Jumlah","Satuan"]];db.o.forEach(o=>r.push([o.od,"Pembukaan",o.name,o.lot,o.qty,o.unit]));db.u.forEach(x=>r.push([x.date,"Pemakaian",x.name,x.lot,x.qty,x.unit]));dl(new Blob(["\ufeff"+r.map(a=>a.map(v=>'"'+String(v||"").replaceAll('"','""')+'"').join(",")).join("\n")],{type:"text/csv"}),"stok_reagen.csv")};
+$("reportMonth").value=monthKey(today());
+$("refreshReport").onclick=()=>{updateReport();loadAudit()};
+const originalFillView=fillView;
+fillView=function(){originalFillView();updateReport()};
 document.getElementById("brandHome")?.addEventListener("click",()=>{document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));$("home").classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));});
 fillView();
 (async()=>{
