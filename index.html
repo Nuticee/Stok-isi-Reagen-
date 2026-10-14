@@ -271,8 +271,14 @@ async function decodeWithService(file){
   if(!file)return;
   $("result").innerHTML='<div class="ok">⏳ Membaca barcode 1D / 2D…</div>';
   if(await decodeLocalFirst(file))return;
-  // Coba gambar asli terlebih dahulu agar DataMatrix kecil tidak kehilangan detail.
-  const attempts=[file,await makeScanImage(file,2200,0.92),await makeScanImage(file,1400,0.86)];
+  // Fast path: buat satu imej saiz sederhana dahulu. Imej asli/HD hanya
+  // diproses jika percubaan pertama gagal, supaya telefon tidak menunggu lama.
+  const attempts=[];
+  const optimized=await makeScanImage(file,1400,0.86);
+  if(optimized)attempts.push(optimized);
+  if(optimized!==file)attempts.push(file);
+  const highRes=await makeScanImage(file,2200,0.92);
+  if(highRes && !attempts.includes(highRes))attempts.push(highRes);
   for(const sendFile of attempts){
     try{
       const fd=new FormData();
