@@ -271,29 +271,29 @@ async function decodeWithService(file){
   if(!file)return;
   $("result").innerHTML='<div class="ok">⏳ Membaca barcode 1D / 2D…</div>';
   if(await decodeLocalFirst(file))return;
-  // Fast path: buat satu imej saiz sederhana dahulu. Imej asli/HD hanya
-  // diproses jika percubaan pertama gagal, supaya telefon tidak menunggu lama.
-  const attempts=[];
+  // Fast path: satu imej sederhana dahulu; imej asli dan HD hanya
+  // diproses jika perlu, supaya tidak menambah masa sebelum scan pertama.
   const optimized=await makeScanImage(file,1400,0.86);
-  if(optimized)attempts.push(optimized);
-  if(optimized!==file)attempts.push(file);
-  const highRes=await makeScanImage(file,2200,0.92);
-  if(highRes && !attempts.includes(highRes))attempts.push(highRes);
-  for(const sendFile of attempts){
+  const attempts=optimized&&optimized!==file?[optimized,file]:[file];
+  async function tryService(sendFile){
     try{
       const fd=new FormData();
       fd.append("File",sendFile,"barcode.jpg");
       const res=await fetch("https://api.leepow.com/barcode",{method:"POST",body:fd});
-      if(!res.ok)continue;
+      if(!res.ok)return false;
       const data=await res.json(),items=data&&data.data?data.data:[];
       const values=items.map(x=>String(x&&x.value||"").trim()).filter(Boolean);
-      if(!values.length)continue;
+      if(!values.length)return false;
       const value=values.find(v=>M[parseGS1(v).gtin]||identify(v))||values[0];
       $("barcode").value=value;
       fill();
-      return;
-    }catch(e){}
+      return true;
+    }catch(e){return false;}
   }
+  for(const sendFile of attempts){if(await tryService(sendFile))return;}
+  // High-resolution fallback is generated only after the first attempts fail.
+  const highRes=await makeScanImage(file,2200,0.92);
+  if(highRes && !attempts.includes(highRes) && await tryService(highRes))return;
   $("result").innerHTML='<div class="warn">Barcode belum terbaca. Coba foto lebih dekat atau pastikan garis/DataMatrix terlihat jelas.</div>';
 }
 $("scan").onclick=()=>{
