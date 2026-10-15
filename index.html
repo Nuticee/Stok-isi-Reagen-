@@ -71,7 +71,7 @@ main{padding:0 10px 18px}.dashboard-head{margin:4px 2px 10px}.dashboard-head h2{
 <div class="metric safe"><b id="repUseQty">0</b><span>Total jumlah dipakai</span></div>
 </div>
 <div id="reportTable" class="small">Pilih bulan untuk melihat laporan.</div>
-<div style="margin-top:12px"><button class="btn secondary" id="exportReport">Export Laporan Bulanan CSV</button></div>
+<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn secondary" id="exportOpenReport">📦 CSV Pembukaan</button><button class="btn secondary" id="exportUseReport">🧪 CSV Pemakaian</button></div>
 </div>
 <div class="card"><b>🕘 Audit Aktivitas Terbaru</b><p class="small">Mencatat aktivitas baru setelah fitur ini aktif. Bukan rekonstruksi perubahan lama.</p><div id="auditList" class="small">Memuat aktivitas…</div></div>
 </section>
@@ -458,7 +458,9 @@ function updateReport(){
     ...uses.map(u=>({date:u.date,type:"Pemakaian",name:u.name,lot:u.lot||"-",qty:u.qty,unit:u.unit||""}))
   ].sort((a,b)=>a.date.localeCompare(b.date));
   $("reportTable").innerHTML=rows.length?'<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;margin-top:12px"><thead><tr><th style="text-align:left;padding:8px">Tanggal</th><th style="text-align:left;padding:8px">Jenis</th><th style="text-align:left;padding:8px">Reagen</th><th style="text-align:left;padding:8px">LOT</th><th style="text-align:right;padding:8px">Jumlah</th></tr></thead><tbody>'+rows.map(r=>'<tr><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.date)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.type)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.name)+'</td><td style="padding:8px;border-top:1px solid #e2e8f0">'+esc(r.lot)+'</td><td style="padding:8px;text-align:right;border-top:1px solid #e2e8f0">'+esc(r.qty)+' '+esc(r.unit)+'</td></tr>').join("")+'</tbody></table></div>':'Belum ada pembukaan atau pemakaian pada bulan ini.';
-  $("exportReport").onclick=()=>{const data=[["Tanggal","Jenis","Reagen","LOT","Jumlah","Satuan"],...rows.map(r=>[r.date,r.type,r.name,r.lot,r.qty,r.unit])];dl(new Blob(["\ufeff"+data.map(a=>a.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(",")).join("\n")],{type:"text/csv"}),"laporan_reagen_"+month+".csv")};
+  const csvBlob = data => new Blob(["\ufeff"+data.map(a=>a.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(",")).join("\n")],{type:"text/csv;charset=utf-8"});
+  $("exportOpenReport").onclick=()=>{const data=[["Tanggal Pembukaan","Nama Reagen","LOT/Batch","Expired","Jumlah Awal","Satuan","Lokasi","Petugas","Catatan"],...opens.map(o=>[o.od,o.name,o.lot||"",o.exp||"",o.qty,o.unit||"",o.loc||"",o.staff||"",o.notes||""])];dl(csvBlob(data),"pembukaan_reagen_"+month+".csv")};
+  $("exportUseReport").onclick=()=>{const data=[["Tanggal Pemakaian","Nama Reagen","LOT/Batch","Jumlah Dipakai","Satuan","Lokasi","Petugas","Catatan"],...uses.map(u=>[u.date,u.name,u.lot||"",u.qty,u.unit||"",u.loc||"",u.staff||"",u.notes||""])];dl(csvBlob(data),"pemakaian_reagen_"+month+".csv")};
 }
 async function loadAudit(){
   const el=$("auditList"); if(!el)return;
